@@ -1,0 +1,156 @@
+/* Estilo general */
+.app {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 1rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Mensajes */
+.msg-container {
+  background-color: #f8f8f8;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.message {
+  margin-bottom: 0.5rem;
+}
+
+.message.yo {
+  color: green;
+  text-align: right;
+}
+
+.message.otro {
+  color: #333;
+  text-align: left;
+}
+
+/* Información del host */
+.host-info {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  color: #666;
+}
+
+/* Área de entrada de mensaje */
+.input-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-area textarea {
+  resize: none;
+}
+
+/* Botones */
+button.p-button {
+  margin-top: 0.5rem;
+}
+
+/* Errores */
+p[style*="color: red"] {
+  font-weight: bold;
+}
+
+/* Estilos generales para la aplicación */
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* Estilos para el contenedor de mensajes */
+.chat-message-container {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+/* Estilos para mensajes propios */
+.chat-message-mine {
+  background-color: #e3f2fd;
+  padding: 8px 12px;
+  border-radius: 12px;
+  margin: 4px 0;
+  display: inline-block;
+  max-width: 80%;
+  text-align: left;
+  word-break: break-word;
+}
+
+/* Estilos para mensajes de otros */
+.chat-message-other {
+  background-color: #f1f1f1;
+  padding: 8px 12px;
+  border-radius: 12px;
+  margin: 4px 0;
+  display: inline-block;
+  max-width: 80%;
+  text-align: left;
+  word-break: break-word;
+}
+
+/* Estilos para el autor del mensaje */
+.chat-message-author {
+  font-weight: bold;
+  color: #333;
+  font-size: 0.85rem;
+}
+
+/* Estilos para el texto del mensaje */
+.chat-message-text {
+  margin-top: 2px;
+  font-size: 0.95rem;
+}
+
+/* Estilos para la información del host */
+.chat-host-info {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Estilos para el área de entrada */
+.chat-input-area {
+  margin-top: 1rem;
+}
+
+/* Estilos para los botones */
+.chat-buttons-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Estilos para mensaje de chat vacío */
+.chat-empty-message {
+  color: #666;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* Estilos para el formulario de unirse/crear sala */
+.chat-form-container {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.chat-input-group {
+  margin-bottom: 1rem;
+}
+
+.chat-input-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
