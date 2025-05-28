@@ -113,18 +113,18 @@ const Chat: FC = () => {
     }, 100);
   }, []);
 
+  // Helper function to emit socket events with type safety
+  const emitEvent = useCallback((event: string, data: Record<string, unknown>): void => {
+    if (socketRef.current) {
+      console.log('Emitting event:', event, data);
+      socketRef.current.emit(event, data);
+    }
+  }, []);
+
   // Initialize socket connection when component mounts
   useEffect(() => {
     console.log('Initializing socket connection to:', SOCKET_SERVER_URL);
     setIsConnecting(true);
-
-    // Helper function to emit socket events with type safety
-    const emitEvent = (event: string, data: Record<string, unknown>): void => {
-      if (socketRef.current) {
-        console.log('Emitting event:', event, data);
-        socketRef.current.emit(event, data);
-      }
-    };
 
     // Helper function to listen to socket events with type safety
     const onEvent = <T = unknown>(
@@ -144,10 +144,10 @@ const Chat: FC = () => {
       return () => {};
     };
 
-    let socket: Socket;
-    try {
-      // Initialize socket connection
-      socket = io(SOCKET_SERVER_URL, {
+    // Initialize socket if it doesn't exist
+    if (!socketRef.current) {
+      console.log('Creating new socket connection');
+      socketRef.current = io(SOCKET_SERVER_URL, {
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         timeout: 10000,
@@ -158,9 +158,10 @@ const Chat: FC = () => {
           'Access-Control-Allow-Origin': '*',
         },
       });
+    }
 
-      // Store the socket in the ref
-      socketRef.current = socket;
+    const socket = socketRef.current;
+    try {
       console.log('Socket instance created, waiting for connection...');
 
       // Connection established
@@ -181,35 +182,51 @@ const Chat: FC = () => {
       };
 
       // Set up event listeners with proper type annotations
-      socket.on('connect', onConnect);
-
-      // Connection error handler
-      socket.on('connect_error', (error: Error) => {
+      const connectHandler = onConnect;
+      const connectErrorHandler = (error: Error) => {
         console.error('Connection error:', error);
         showError('Error de conexión', `No se pudo conectar al servidor: ${error.message}`);
         setIsConnecting(false);
         setConnected(false);
-      });
-
-      // Handle disconnection
-      socket.on('disconnect', (reason: string) => {
+      };
+      const disconnectHandler = (reason: string) => {
         console.log('Disconnected from server. Reason:', reason);
         if (reason === 'io server disconnect') {
           console.log('Server disconnected. Attempting to reconnect...');
           socket.connect();
         }
         setConnected(false);
-      });
+      };
 
+      socket.on('connect', connectHandler);
+      socket.on('connect_error', connectErrorHandler);
+      socket.on('disconnect', disconnectHandler);
+
+      // Cleanup function for socket events
+      const cleanupSocketEvents = () => {
+        if (!socketRef.current) return;
+        
+        const currentSocket = socketRef.current;
+        currentSocket.off('connect', onConnect);
+        currentSocket.off('connect_error', connectErrorHandler);
+        currentSocket.off('disconnect', disconnectHandler);
+        
+        if (currentSocket.connected) {
+          currentSocket.disconnect();
+        }
+      };
+      
       // Handle successful reconnection using the manager
-      const manager = (socket as any).io;
+      const manager = socket.io;
+      const handleReconnect = (attempt: number) => {
+        console.log(`Reconnected after ${attempt} attempts`);
+        setConnected(true);
+        setIsConnecting(false);
+        showSuccess('Reconectado', 'Conexión restablecida con el servidor');
+      };
+      
       if (manager) {
-        manager.on('reconnect', (attempt: number) => {
-          console.log(`Reconnected after ${attempt} attempts`);
-          setConnected(true);
-          setIsConnecting(false);
-          showSuccess('Reconectado', 'Conexión restablecida con el servidor');
-        });
+        manager.on('reconnect', handleReconnect);
       }
 
       // Host information (if needed)
@@ -231,16 +248,41 @@ const Chat: FC = () => {
         setIsConnecting(false);
       });
 
-      // New message received
-      onEvent<ChatMessage>('receive_message', (msg) => {
+      // New message received - Manejador de mensajes con prevención de duplicados
+      const messageHandler = useCallback((msg: ChatMessage) => {
         console.log('Mensaje recibido:', msg);
-        setMessages((prev) => [...prev, msg]);
+        setMessages(prev => {
+          // Verificar si el mensaje ya existe para evitar duplicados
+          const messageExists = prev.some(m => 
+            m.timestamp === msg.timestamp && 
+            m.autor === msg.autor && 
+            m.message === msg.message
+          );
+          
+          if (!messageExists) {
+            return [...prev, msg];
+          }
+          return prev;
+        });
+        
         setLastActivity(new Date());
         // Hacer scroll al final de los mensajes
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
-      });
+      }, []);
+      
+      // Configurar el manejador de mensajes una sola vez
+      useEffect(() => {
+        if (socketRef.current) {
+          const socket = socketRef.current;
+          socket.on('receive_message', messageHandler);
+          
+          return () => {
+            socket.off('receive_message', messageHandler);
+          };
+        }
+      }, [messageHandler]);
 
       // Room update (participants, limit, etc.)
       onEvent<RoomUpdate>('room_update', (data) => {
@@ -407,12 +449,35 @@ const Chat: FC = () => {
     });
 
       // Cleanup on unmount
-    return () => {
-      console.log('Cleaning up socket connection');
-      if (socket.connected) {
-        socket.disconnect();
-      }
-    };
+      return () => {
+        console.log('Cleaning up socket connection');
+        
+        // Clean up socket events
+        if (socketRef.current) {
+          const currentSocket = socketRef.current;
+          
+          // Remove all event listeners
+          currentSocket.off('connect');
+          currentSocket.off('connect_error');
+          currentSocket.off('disconnect');
+          
+          // Clean up manager events
+          const manager = (currentSocket as any).io;
+          if (manager) {
+            manager.off('reconnect');
+          }
+          
+          // Remove all custom event listeners
+          const events = ['host_info', 'room_info', 'receive_message', 'room_update', 'error_join'];
+          events.forEach(event => currentSocket.off(event));
+          
+          if (currentSocket.connected) {
+            currentSocket.disconnect();
+          }
+          
+          socketRef.current = null;
+        }
+      };
   }, []); // Remove nickname from dependencies to ensure connection is established on mount
 
   // Handle disconnect
